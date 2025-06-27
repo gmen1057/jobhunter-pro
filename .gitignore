@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Logs
+*.log
+server.log
+frontend.log
+
+# Cache
+.cache/
+frontend/.cache/
+
+# Build outputs
+build/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup
+*.backup.*
