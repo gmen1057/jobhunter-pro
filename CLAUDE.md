@@ -184,37 +184,35 @@ tail -f /root/jobhunter-pro/frontend/frontend.log
 - **Логирование**: Детальное отслеживание всех этапов авторизации
 - **Ошибки**: Корректная обработка ошибок и перенаправление на фронтенд
 
-### 16. ⚠️ Текущая проблема с nginx proxy (27.06.2025 - вторая сессия)
-- **Проблема**: При запросе POST на https://jhunterpro.ru/auth/hh возвращается 404 "Cannot POST /auth/hh"
-- **Диагностика**: 
-  - Backend работает корректно на localhost:8001/auth/hh (возвращает OAuth URL)
-  - nginx конфигурация в /etc/nginx/vhosts/www-root/jhunterpro.ru.conf (ISPManager)
-  - Проксирование настроено как `location /auth/ { proxy_pass http://localhost:8001; }`
-- **Исправлено сегодня**:
-  - Обновлены все localhost ссылки на production URLs
-  - Исправлен fallback redirect_uri в backend/main.py
-  - Обновлен CORS для поддержки https://jhunterpro.ru
-  - Обновлен frontend API URL fallback
+### 16. ✅ Решена проблема с nginx proxy (27.06.2025 - вторая сессия)
+- **Проблема**: При запросе POST на https://jhunterpro.ru/auth/hh возвращался 404 "Cannot POST /auth/hh"
+- **Причина**: Запросы попадали на React dev server вместо backend (благодаря Gemini за диагностику!)
+- **Решение**: 
+  - Изменена nginx конфигурация - все API запросы теперь идут через префикс `/api/`
+  - Добавлено правило `rewrite ^/api/(.*)$ /$1 break;` для удаления префикса перед отправкой на backend
+  - Обновлены все URL в backend и frontend для использования `/api/` префикса
+  - Новый redirect_uri: `https://jhunterpro.ru/api/auth/callback`
+- **Результат**: OAuth endpoint работает корректно на `POST https://jhunterpro.ru/api/auth/hh`
 
 ## АКТУАЛЬНОЕ СОСТОЯНИЕ СИСТЕМЫ (27.06.2025):
 
 ### Рабочие URL:
 - **Основной сайт**: https://jhunterpro.ru ✅
-- **API**: https://jhunterpro.ru/auth/ ⚠️ (проблема с nginx proxy)
+- **API**: https://jhunterpro.ru/api/ ✅
 - **Сервер**: 62.109.16.204 ✅
 
 ### Активные процессы:
-- **Backend**: PID 588777 (python main.py) на 62.109.16.204:8001
-- **Frontend**: PID 588067 на 62.109.16.204:3002
-- **nginx**: reverse proxy на 62.109.16.204:80/443
+- **Backend**: FastAPI на 62.109.16.204:8001
+- **Frontend**: serve (production build) на 62.109.16.204:3002
+- **nginx**: reverse proxy на 62.109.16.204:80/443 с правильной конфигурацией
 
 ### OAuth статус:
-1. ✅ **Backend**: Генерирует правильный OAuth URL с redirect_uri=https://jhunterpro.ru/auth/callback
+1. ✅ **Backend**: Генерирует правильный OAuth URL с redirect_uri=https://jhunterpro.ru/api/auth/callback
 2. ✅ **HH API**: Настроены ключи и redirect_uri
-3. ⚠️ **dev.hh.ru**: Нужно обновить redirect_uri на `https://jhunterpro.ru/auth/callback`
+3. ⚠️ **dev.hh.ru**: Нужно обновить redirect_uri на `https://jhunterpro.ru/api/auth/callback`
 4. ✅ **Callback**: Правильно обрабатывает токены и перенаправляет
 5. ✅ **Frontend**: Получает и сохраняет токены
-6. ⚠️ **nginx**: Проблема с проксированием /auth/hh - возвращает 404 "Cannot POST"
+6. ✅ **nginx**: Корректно проксирует API запросы через /api/ префикс
 
 ### Команды для управления (обновлены):
 ```bash
