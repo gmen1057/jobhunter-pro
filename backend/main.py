@@ -142,15 +142,40 @@ async def search_vacancies(
     return {"items": mock_vacancies, "found": 1, "page": page}
 
 @app.get("/user/profile")
-async def get_user_profile(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Получение профиля пользователя"""
-    # TODO: Проверить токен и вернуть данные пользователя
-    return {
-        "id": 1,
-        "email": "user@example.com",
-        "name": "Test User",
-        "hh_token": "token_exists"
-    }
+async def get_user_profile(request: Request):
+    """Получение профиля пользователя из HeadHunter API"""
+    token = request.headers.get("authorization", "").replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        from services.hh_client import HHClient
+        hh_client = HHClient(access_token=token)
+        user_data = await hh_client.get_me()
+        
+        # Формируем полное имя
+        first_name = user_data.get("first_name", "")
+        last_name = user_data.get("last_name", "") 
+        middle_name = user_data.get("middle_name", "")
+        
+        full_name = f"{last_name} {first_name}".strip()
+        if middle_name:
+            full_name = f"{last_name} {first_name} {middle_name}".strip()
+        
+        return {
+            "id": user_data.get("id"),
+            "email": user_data.get("email"),
+            "name": f"{first_name} {last_name}".strip(),
+            "full_name": full_name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "middle_name": middle_name,
+            "hh_id": user_data.get("id"),
+            "hh_token": "token_exists"
+        }
+    except Exception as e:
+        logger.error(f"Error getting user profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
