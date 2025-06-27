@@ -18,7 +18,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["https://jhunterpro.ru", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,7 +68,7 @@ async def hh_auth():
     # Redirect URI должен точно совпадать с указанным в настройках приложения на hh.ru
     # Если в настройках указан https://localhost:8080/auth/callback, используйте его
     # Иначе обновите настройки приложения на hh.ru
-    redirect_uri = os.getenv("HH_REDIRECT_URI", "http://62.109.16.204:8001/auth/callback")
+    redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/auth/callback")
     auth_url = f"https://hh.ru/oauth/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}"
     return {"auth_url": auth_url}
 
@@ -90,7 +90,7 @@ async def auth_callback(request: Request, code: str = None):
     
     try:
         hh_client = HHClient()
-        redirect_uri = os.getenv("HH_REDIRECT_URI", "http://62.109.16.204:8001/auth/callback")
+        redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/auth/callback")
         logger.info(f"Using redirect_uri: {redirect_uri}")
         
         # Обмениваем код на токен
