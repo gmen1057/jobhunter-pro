@@ -121,34 +121,25 @@ async def auth_callback(request: Request, code: str = None):
 async def search_vacancies(
     text: Optional[str] = None,
     area: Optional[int] = None,
-    salary: Optional[int] = None,
-    experience: Optional[str] = None,
-    employment: Optional[str] = None,
-    page: int = 0,
-    per_page: int = 20,
-    request: Request = None
+    salary_from: Optional[int] = None,
+    page: int = 0
 ):
     """Поиск вакансий через HeadHunter API"""
-    try:
-        # Для поиска вакансий токен не обязателен, но если есть - используем его
-        token = request.headers.get("authorization", "").replace("Bearer ", "") if request else None
-        from services.hh_client import HHClient
-        hh_client = HHClient(access_token=token)
-        
-        # Вызываем реальный метод поиска
-        vacancies_data = await hh_client.search_vacancies(
-            text=text,
-            area=area,
-            salary=salary,
-            experience=experience,
-            employment=employment,
-            page=page,
-            per_page=per_page
-        )
-        return vacancies_data
-    except Exception as e:
-        logger.error(f"Error searching vacancies: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # TODO: Реализовать поиск через HH API
+    mock_vacancies = [
+        {
+            "id": "123456",
+            "name": "Python Developer",
+            "employer_name": "TechCorp",
+            "salary_from": 150000,
+            "salary_to": 250000,
+            "currency": "RUR",
+            "area_name": "Москва",
+            "published_at": "2024-01-15T10:00:00",
+            "url": "https://hh.ru/vacancy/123456"
+        }
+    ]
+    return {"items": mock_vacancies, "found": 1, "page": page}
 
 @app.get("/user/profile")
 async def get_user_profile(request: Request):

@@ -66,9 +66,7 @@ export const VacancySearch: React.FC = () => {
       const searchParams = {
         text: filters.text || undefined,
         area: filters.area || undefined,
-        salary: filters.salary_from || undefined,
-        experience: filters.experience || undefined,
-        employment: filters.employment || undefined,
+        salary_from: filters.salary_from || undefined,
         page: currentPage
       };
 
