@@ -6,6 +6,7 @@ from typing import Optional, List
 import os
 from dotenv import load_dotenv
 from loguru import logger
+import httpx
 
 load_dotenv()
 
@@ -154,3 +155,41 @@ async def get_user_profile(credentials: HTTPAuthorizationCredentials = Depends(s
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+# Резюме endpoints
+@app.get("/resumes/mine")
+async def get_my_resumes(request: Request):
+    """Получить список резюме пользователя"""
+    token = request.headers.get("authorization", "").replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        from services.hh_client import HHClient
+        hh_client = HHClient(access_token=token)
+        resumes = await hh_client.get_resumes()
+        return {"items": resumes, "found": len(resumes)}
+    except Exception as e:
+        logger.error(f"Error getting resumes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/resumes/{resume_id}")
+async def get_resume_details(resume_id: str, request: Request):
+    """Получить детали конкретного резюме"""
+    token = request.headers.get("authorization", "").replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        from services.hh_client import HHClient
+        hh_client = HHClient(access_token=token)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.hh.ru/resumes/{resume_id}",
+                headers=hh_client._get_headers()
+            )
+            response.raise_for_status()
+            return response.json()
+    except Exception as e:
+        logger.error(f"Error getting resume details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

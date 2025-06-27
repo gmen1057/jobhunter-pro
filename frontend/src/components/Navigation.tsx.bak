@@ -4,7 +4,6 @@ import {
   HomeIcon, 
   MagnifyingGlassIcon, 
   ChartBarIcon, 
-  DocumentTextIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon 
 } from '@heroicons/react/24/outline';
@@ -15,7 +14,6 @@ export const Navigation: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: HomeIcon },
     { name: 'Поиск вакансий', href: '/search', icon: MagnifyingGlassIcon },
-    { name: 'Резюме', href: '/resumes', icon: DocumentTextIcon },
     { name: 'Аналитика', href: '/analytics', icon: ChartBarIcon },
     { name: 'Настройки', href: '/settings', icon: Cog6ToothIcon },
   ];
