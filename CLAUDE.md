@@ -194,6 +194,19 @@ tail -f /root/jobhunter-pro/frontend/frontend.log
   - Новый redirect_uri: `https://jhunterpro.ru/api/auth/callback`
 - **Результат**: OAuth endpoint работает корректно на `POST https://jhunterpro.ru/api/auth/hh`
 
+### 17. ✅ Реализована функциональность резюме (27.06.2025 - третья сессия)
+- **По рекомендации Gemini**: Добавлена полноценная работа с резюме пользователей
+- **Backend изменения**:
+  - Добавлены endpoints `/api/resumes/mine` и `/api/resumes/{id}`
+  - Использован существующий метод `get_resumes()` в HHClient
+  - Добавлена авторизация через Bearer токен в заголовках
+- **Frontend изменения**:
+  - Создан компонент `ResumeList` с отображением всех данных резюме
+  - Добавлена страница `/resumes` с навигацией
+  - Показ профессиональных ролей, опыта, зарплаты, местоположения
+  - Возможность выбора резюме для целевого поиска вакансий
+- **Цель**: Подготовка к улучшению релевантности поиска через professional_roles
+
 ## АКТУАЛЬНОЕ СОСТОЯНИЕ СИСТЕМЫ (27.06.2025):
 
 ### Рабочие URL:
@@ -209,10 +222,18 @@ tail -f /root/jobhunter-pro/frontend/frontend.log
 ### OAuth статус:
 1. ✅ **Backend**: Генерирует правильный OAuth URL с redirect_uri=https://jhunterpro.ru/api/auth/callback
 2. ✅ **HH API**: Настроены ключи и redirect_uri
-3. ⚠️ **dev.hh.ru**: Нужно обновить redirect_uri на `https://jhunterpro.ru/api/auth/callback`
+3. ✅ **dev.hh.ru**: redirect_uri обновлен на `https://jhunterpro.ru/api/auth/callback`
 4. ✅ **Callback**: Правильно обрабатывает токены и перенаправляет
 5. ✅ **Frontend**: Получает и сохраняет токены
 6. ✅ **nginx**: Корректно проксирует API запросы через /api/ префикс
+7. ✅ **Авторизация**: Полностью работает, токены получаются корректно
+
+### Реализованный функционал:
+- ✅ OAuth авторизация через HeadHunter
+- ✅ Просмотр и управление резюме
+- ✅ Поиск вакансий (базовый)
+- ✅ Dashboard и аналитика
+- ⚠️ Релевантный поиск по professional_roles (в процессе)
 
 ### Команды для управления (обновлены):
 ```bash
