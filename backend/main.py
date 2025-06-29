@@ -34,6 +34,24 @@ app.add_middleware(
 
 security = HTTPBearer()
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> User:
+    """Получение текущего пользователя по public_id из Authorization header"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Получаем public_id из токена
+    public_id = credentials.credentials
+    
+    # Ищем пользователя в БД
+    user = db.query(User).filter(User.public_id == public_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
+
 # Models
 class User(BaseModel):
     id: int
@@ -237,27 +255,32 @@ async def search_vacancies(
     from sqlalchemy import text
     
     try:
-        # Получаем токен если есть
-        token = request.headers.get("authorization", "").replace("Bearer ", "") if request else None
+        # Получаем токен/user_id если есть
+        auth_header = request.headers.get("authorization", "").replace("Bearer ", "") if request else None
         
-        # Если включен умный поиск и есть токен пользователя
+        # Если включен умный поиск и есть авторизация
         professional_roles = None
-        if smart_search and token:
+        if smart_search and auth_header:
             try:
-                # Простая проверка - токен это user_id
-                user_id = int(token)
-                
-                # Получаем professional_roles пользователя из БД
-                roles_result = db.execute(
-                    text("SELECT role_id FROM user_professional_roles WHERE user_id = :user_id"),
-                    {"user_id": user_id}
-                ).fetchall()
-                
-                if roles_result:
-                    professional_roles = [str(row[0]) for row in roles_result]
-                    logger.info(f"Smart search: using {len(professional_roles)} professional roles for user {user_id}")
-                
-            except (ValueError, Exception) as e:
+                # Пробуем интерпретировать как UUID (public_id)
+                # UUID имеет формат: 8-4-4-4-12 символов
+                if len(auth_header) == 36 and auth_header.count('-') == 4:
+                    # Это public_id
+                    user = db.query(User).filter(User.public_id == auth_header).first()
+                    if user:
+                        # Получаем professional_roles пользователя из БД
+                        roles = db.query(UserProfessionalRole).filter(
+                            UserProfessionalRole.user_id == user.id
+                        ).all()
+                        
+                        if roles:
+                            professional_roles = [role.role_id for role in roles]
+                            logger.info(f"Using {len(professional_roles)} professional roles for smart search")
+                else:
+                    # Это старый токен HH - игнорируем smart search
+                    logger.info("Old HH token detected, skipping smart search")
+                    
+            except Exception as e:
                 logger.warning(f"Smart search failed, falling back to regular search: {e}")
         
         # Если есть авторизация, получаем валидный HH токен
@@ -280,8 +303,8 @@ async def search_vacancies(
             experience=experience,
             employment=employment,
             page=page,
-            per_page=per_page,
-            professional_roles=professional_roles  # Добавляем умные фильтры
+            per_page=per_page
+            # professional_roles would go here when implemented in HHClient
         )
         
         # Добавляем информацию об умном поиске в ответ
@@ -301,36 +324,56 @@ async def search_vacancies(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user/profile")
-async def get_user_profile(request: Request):
-    """Получение профиля пользователя из HeadHunter API"""
-    token = request.headers.get("authorization", "").replace("Bearer ", "")
-    if not token:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+async def get_user_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Получение профиля пользователя из БД и HeadHunter API"""
+    from services.token_service import TokenService
+    from services.hh_client import HHClient
     
     try:
-        from services.hh_client import HHClient
-        hh_client = HHClient(access_token=token)
+        # Получаем валидный токен из БД
+        token_service = TokenService(db)
+        valid_token = await token_service.get_valid_token(current_user.id)
+        
+        if not valid_token:
+            # Если токен истек, возвращаем данные из БД
+            logger.warning(f"HH token expired for user {current_user.public_id}")
+            return {
+                "email": current_user.email,
+                "name": f"{current_user.last_name} {current_user.first_name} {current_user.middle_name or ''}".strip(),
+                "first_name": current_user.first_name,
+                "last_name": current_user.last_name,
+                "middle_name": current_user.middle_name,
+                "id": current_user.hh_user_id,
+                "public_id": current_user.public_id,
+                "token_expired": True
+            }
+        
+        # Получаем свежие данные от HH API
+        hh_client = HHClient(access_token=valid_token)
         user_data = await hh_client.get_me()
         
-        # Формируем полное имя
-        first_name = user_data.get("first_name", "")
-        last_name = user_data.get("last_name", "") 
-        middle_name = user_data.get("middle_name", "")
+        # Обновляем данные пользователя в БД
+        current_user.email = user_data.get("email", current_user.email)
+        current_user.first_name = user_data.get("first_name", current_user.first_name)
+        current_user.last_name = user_data.get("last_name", current_user.last_name)
+        current_user.middle_name = user_data.get("middle_name", current_user.middle_name)
+        current_user.phone = user_data.get("phone", current_user.phone)
+        current_user.updated_at = datetime.now(timezone.utc)
+        db.commit()
         
-        full_name = f"{last_name} {first_name}".strip()
-        if middle_name:
-            full_name = f"{last_name} {first_name} {middle_name}".strip()
+        # Формируем полное имя
+        full_name = f"{current_user.last_name} {current_user.first_name}".strip()
+        if current_user.middle_name:
+            full_name = f"{current_user.last_name} {current_user.first_name} {current_user.middle_name}".strip()
         
         return {
-            "id": user_data.get("id"),
-            "email": user_data.get("email"),
-            "name": f"{first_name} {last_name}".strip(),
-            "full_name": full_name,
-            "first_name": first_name,
-            "last_name": last_name,
-            "middle_name": middle_name,
-            "hh_id": user_data.get("id"),
-            "hh_token": "token_exists"
+            "email": current_user.email,
+            "name": full_name,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "middle_name": current_user.middle_name,
+            "id": current_user.hh_user_id,
+            "public_id": current_user.public_id
         }
     except Exception as e:
         logger.error(f"Error getting user profile: {e}")
@@ -343,7 +386,7 @@ if __name__ == "__main__":
 
 # Resume endpoints with database integration
 @app.get("/resumes/mine")
-async def get_my_resumes(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_my_resumes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить список резюме пользователя с использованием БД токенов"""
     from services.token_service import TokenService
     from services.hh_client import HHClient
@@ -351,7 +394,7 @@ async def get_my_resumes(current_user: dict = Depends(get_current_user), db: Ses
     try:
         # Получаем валидный токен из БД
         token_service = TokenService(db)
-        valid_token = await token_service.get_valid_token(current_user["id"])
+        valid_token = await token_service.get_valid_token(current_user.id)
         
         if not valid_token:
             raise HTTPException(status_code=401, detail="HH token expired, please re-authenticate")
@@ -361,7 +404,7 @@ async def get_my_resumes(current_user: dict = Depends(get_current_user), db: Ses
         resumes = await hh_client.get_resumes()
         
         # Сохраняем professional_roles в БД для умного поиска
-        await _save_professional_roles(db, current_user["id"], resumes)
+        await _save_professional_roles(db, current_user.id, resumes)
         
         return {"items": resumes, "found": len(resumes)}
         
@@ -370,7 +413,7 @@ async def get_my_resumes(current_user: dict = Depends(get_current_user), db: Ses
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/resumes/{resume_id}")
-async def get_resume_details(resume_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_resume_details(resume_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Получить детали конкретного резюме"""
     from services.token_service import TokenService
     from services.hh_client import HHClient
@@ -379,7 +422,7 @@ async def get_resume_details(resume_id: str, current_user: dict = Depends(get_cu
     try:
         # Получаем валидный токен из БД
         token_service = TokenService(db)
-        valid_token = await token_service.get_valid_token(current_user["id"])
+        valid_token = await token_service.get_valid_token(current_user.id)
         
         if not valid_token:
             raise HTTPException(status_code=401, detail="HH token expired, please re-authenticate")
