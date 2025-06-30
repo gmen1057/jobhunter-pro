@@ -138,10 +138,10 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
             db.add(user)
             db.commit()
             db.refresh(user)
-            logger.info(f"New user created with public_id: {user.public_id}")
+            logger.info(f"New user created with public_id: {user.id}")
         else:
             # Обновляем информацию существующего пользователя
-            logger.info(f"Updating existing user with public_id: {user.public_id}")
+            logger.info(f"Updating existing user with public_id: {user.id}")
             user.email = user_info['email']
             user.first_name = user_info.get('first_name')
             user.last_name = user_info.get('last_name')
@@ -181,14 +181,14 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
                     db.add(role)
             
             db.commit()
-            logger.info(f"Professional roles saved for user {user.public_id}")
+            logger.info(f"Professional roles saved for user {user.id}")
         except Exception as e:
             logger.warning(f"Failed to fetch professional roles: {e}")
             # Не прерываем процесс авторизации из-за ошибки с ролями
         
         # Перенаправляем на фронтенд с public_id пользователя
-        frontend_url = f"https://jhunterpro.ru/?user_id={user.public_id}"
-        logger.info(f"Redirecting to frontend with user_id: {user.public_id}")
+        frontend_url = f"https://jhunterpro.ru/?user_id={user.id}"
+        logger.info(f"Redirecting to frontend with user_id: {user.id}")
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=frontend_url)
         
