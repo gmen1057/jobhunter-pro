@@ -78,7 +78,7 @@ async def hh_auth():
     # Иначе обновите настройки приложения на hh.ru
     redirect_uri = os.getenv("HH_REDIRECT_URI")
     if not redirect_uri:
-            raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
     auth_url = f"https://hh.ru/oauth/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}"
     return {"auth_url": auth_url}
 
@@ -104,8 +104,8 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
     try:
         hh_client = HHClient()
         redirect_uri = os.getenv("HH_REDIRECT_URI")
-        if not redirect_uri:
-            raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+    if not redirect_uri:
+        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
         logger.info(f"Using redirect_uri: {redirect_uri}")
         
         # Обмениваем код на токен
@@ -207,8 +207,8 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
     try:
         hh_client = HHClient()
         redirect_uri = os.getenv("HH_REDIRECT_URI")
-        if not redirect_uri:
-            raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+    if not redirect_uri:
+        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
         logger.info(f"Using redirect_uri: {redirect_uri}")
         
         # Обмениваем код на токен
