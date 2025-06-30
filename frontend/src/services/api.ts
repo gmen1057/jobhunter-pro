@@ -13,8 +13,8 @@ class ApiService {
 
     // Добавляем токен авторизации к каждому запросу
     this.client.interceptors.request.use((config) => {
-      const userId = localStorage.getItem('user_id');
-      if (userId) {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
         config.headers.Authorization = `Bearer ${userId}`;
       }
       return config;
@@ -25,7 +25,7 @@ class ApiService {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('user_id');
+          localStorage.removeItem('auth_token');
           window.location.reload();
         }
         return Promise.reject(error);

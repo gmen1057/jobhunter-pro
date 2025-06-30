@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
-import { Login } from './pages/Login';
+import Login from './pages/Login';
 import { Settings } from './pages/Settings';
 import { VacancySearch } from './pages/VacancySearch';
 import { Analytics } from './pages/Analytics';
@@ -13,8 +13,8 @@ function App() {
 
   React.useEffect(() => {
     // Проверяем авторизацию при загрузке
-    const userId = localStorage.getItem('user_id');
-    setIsAuthenticated(!!userId);
+    const token = localStorage.getItem('auth_token');
+    setIsAuthenticated(!!token);
   }, []);
 
   if (!isAuthenticated) {
