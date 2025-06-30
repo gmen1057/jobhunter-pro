@@ -27,12 +27,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   React.useEffect(() => {
     // Проверяем, есть ли токен или ошибка в URL
     const urlParams = new URLSearchParams(window.location.search);
-    const authToken = urlParams.get('auth_token');
+    const userId = urlParams.get('user_id');
     const error = urlParams.get('error');
     
-    if (authToken) {
+    if (userId) {
       // Сохраняем токен и перенаправляем
-      localStorage.setItem('auth_token', authToken);
+      localStorage.setItem('user_id', userId);
       // Очищаем URL от параметров
       window.history.replaceState({}, document.title, window.location.pathname);
       onLogin();

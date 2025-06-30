@@ -21,7 +21,7 @@ export const Navigation: React.FC = () => {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_id');
     window.location.reload();
   };
 

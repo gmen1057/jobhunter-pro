@@ -35,7 +35,7 @@ app.add_middleware(
 security = HTTPBearer()
 
 # Models
-class UserResponse(BaseModel):
+class User(BaseModel):
     id: int
     email: str
     name: str

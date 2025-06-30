@@ -60,7 +60,8 @@ class HHClient:
         experience: Optional[str] = None,
         employment: Optional[str] = None,
         page: int = 0,
-        per_page: int = 20
+        per_page: int = 20,
+        professional_roles: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Поиск вакансий"""
         params = {
@@ -78,6 +79,8 @@ class HHClient:
             params["experience"] = experience
         if employment:
             params["employment"] = employment
+        if professional_roles:
+            params["professional_role"] = professional_roles
             
         async with httpx.AsyncClient() as client:
             response = await client.get(

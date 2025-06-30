@@ -13,8 +13,8 @@ function App() {
 
   React.useEffect(() => {
     // Проверяем авторизацию при загрузке
-    const token = localStorage.getItem('auth_token');
-    setIsAuthenticated(!!token);
+    const userId = localStorage.getItem('user_id');
+    setIsAuthenticated(!!userId);
   }, []);
 
   if (!isAuthenticated) {

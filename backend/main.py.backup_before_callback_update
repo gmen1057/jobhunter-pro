@@ -35,7 +35,7 @@ app.add_middleware(
 security = HTTPBearer()
 
 # Models
-class UserResponse(BaseModel):
+class User(BaseModel):
     id: int
     email: str
     name: str
@@ -81,122 +81,18 @@ async def hh_auth():
     return {"auth_url": auth_url}
 
 @app.get("/auth/callback")
-async def auth_callback(request: Request, code: str = None, db: Session = Depends(get_db)):
-    """Callback для получения токена от HeadHunter и сохранения в БД"""
+async def auth_callback(request: Request, code: str = None):
+    """Callback для получения токена от HeadHunter"""
     from services.hh_client import HHClient
-    from datetime import datetime, timedelta, timezone
-    import uuid
     
     logger.info(f"Auth callback received. URL: {request.url}")
     logger.info(f"Query params: {request.query_params}")
     
-    # Проверка наличия кода авторизации
     if not code:
         logger.error("No code parameter received")
-        error_url = "https://jhunterpro.ru/?error=no_code"
+        error_url = "https://62.109.16.204/?error=no_code"
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=error_url)
-    
-    logger.info(f"Auth callback received with code: {code[:10]}...")
-    
-    try:
-        hh_client = HHClient()
-        redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/api/auth/callback")
-        logger.info(f"Using redirect_uri: {redirect_uri}")
-        
-        # Обмениваем код на токен
-        logger.info("Exchanging code for token...")
-        token_data = await hh_client.get_access_token(code, redirect_uri)
-        logger.info(f"Token received successfully: {token_data.get('token_type', 'unknown')} token")
-        
-        # Получаем информацию о пользователе из HH API
-        logger.info("Getting user info from HH API...")
-        hh_client.access_token = token_data['access_token']
-        user_info = await hh_client.get_me()
-        logger.info(f"User info received: {user_info.get('email', 'unknown')}")
-        
-        # Проверяем существующего пользователя или создаем нового
-        user = db.query(User).filter(User.hh_user_id == user_info['id']).first()
-        
-        if not user:
-            # Создаем нового пользователя
-            logger.info(f"Creating new user for HH ID: {user_info['id']}")
-            user = User(
-                public_id=str(uuid.uuid4()),
-                hh_user_id=user_info['id'],
-                email=user_info['email'],
-                first_name=user_info.get('first_name'),
-                last_name=user_info.get('last_name'),
-                middle_name=user_info.get('middle_name'),
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            logger.info(f"New user created with public_id: {user.public_id}")
-        else:
-            # Обновляем информацию существующего пользователя
-            logger.info(f"Updating existing user with public_id: {user.public_id}")
-            user.email = user_info['email']
-            user.first_name = user_info.get('first_name')
-            user.last_name = user_info.get('last_name')
-            user.middle_name = user_info.get('middle_name')
-            user.updated_at = datetime.now(timezone.utc)
-            db.commit()
-        
-        # Сохраняем токены через TokenService
-        logger.info("Saving tokens to database...")
-        token_service = TokenService(db)
-        await token_service.save_initial_tokens(
-            user_id=user.id,
-            access_token=token_data['access_token'],
-            refresh_token=token_data['refresh_token'],
-            expires_in=token_data['expires_in']
-        )
-        logger.info("Tokens saved successfully")
-        
-        # Получаем и сохраняем professional roles из резюме
-        try:
-            logger.info("Fetching user resumes for professional roles...")
-            resumes = await hh_client.get_resumes()
-            
-            # Удаляем старые роли
-            db.query(UserProfessionalRole).filter(UserProfessionalRole.user_id == user.id).delete()
-            
-            # Сохраняем новые роли
-            for resume in resumes.get('items', []):
-                for i, spec in enumerate(resume.get('specialization', [])):
-                    role = UserProfessionalRole(
-                        public_id=str(uuid.uuid4()),
-                        user_id=user.id,
-                        role_id=spec['id'],
-                        role_name=spec['name'],
-                        is_primary=(i == 0)  # Первая роль считается основной
-                    )
-                    db.add(role)
-            
-            db.commit()
-            logger.info(f"Professional roles saved for user {user.public_id}")
-        except Exception as e:
-            logger.warning(f"Failed to fetch professional roles: {e}")
-            # Не прерываем процесс авторизации из-за ошибки с ролями
-        
-        # Перенаправляем на фронтенд с public_id пользователя
-        frontend_url = f"https://jhunterpro.ru/?user_id={user.public_id}"
-        logger.info(f"Redirecting to frontend with user_id: {user.public_id}")
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=frontend_url)
-        
-    except Exception as e:
-        logger.error(f"Auth callback error: {e}")
-        logger.error(f"Error type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        error_url = "https://jhunterpro.ru/?error=auth_failed"
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=error_url)
-
     
     logger.info(f"Auth callback received with code: {code[:10]}...")
     
