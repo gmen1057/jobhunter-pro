@@ -76,9 +76,7 @@ async def hh_auth():
     # Redirect URI должен точно совпадать с указанным в настройках приложения на hh.ru
     # Если в настройках указан https://localhost:8080/auth/callback, используйте его
     # Иначе обновите настройки приложения на hh.ru
-    redirect_uri = os.getenv("HH_REDIRECT_URI")
-    if not redirect_uri:
-        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+    redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/api/auth/callback")
     auth_url = f"https://hh.ru/oauth/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}"
     return {"auth_url": auth_url}
 
@@ -103,9 +101,7 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
     
     try:
         hh_client = HHClient()
-        redirect_uri = os.getenv("HH_REDIRECT_URI")
-    if not redirect_uri:
-        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+        redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/api/auth/callback")
         logger.info(f"Using redirect_uri: {redirect_uri}")
         
         # Обмениваем код на токен
@@ -206,9 +202,7 @@ async def auth_callback(request: Request, code: str = None, db: Session = Depend
     
     try:
         hh_client = HHClient()
-        redirect_uri = os.getenv("HH_REDIRECT_URI")
-    if not redirect_uri:
-        raise HTTPException(status_code=500, detail="HH_REDIRECT_URI not configured")
+        redirect_uri = os.getenv("HH_REDIRECT_URI", "https://jhunterpro.ru/api/auth/callback")
         logger.info(f"Using redirect_uri: {redirect_uri}")
         
         # Обмениваем код на токен

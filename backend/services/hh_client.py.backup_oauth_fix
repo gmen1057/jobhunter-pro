@@ -8,7 +8,6 @@ class HHClient:
     """Клиент для работы с HeadHunter API"""
     
     BASE_URL = "https://api.hh.ru"
-    OAUTH_URL = "https://hh.ru"
     
     def __init__(self, access_token: Optional[str] = None):
         self.access_token = access_token
@@ -39,7 +38,7 @@ class HHClient:
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.OAUTH_URL}/oauth/token",
+                f"{self.BASE_URL}/token",
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
